@@ -1,0 +1,51 @@
+- name : demo on deployment
+  hosts : PROD
+  become : yes
+  vars :
+    USER_NAME : tom_user
+    TOMCAT_PATH : /tomcat
+    WARU : http://3.101.79.246:8081/repository/maven-snapshots/
+    PACK : /tomcat/apache-tomcat-9.0.70/webapps/ks.war
+    
+  tasks :
+     - name : create an user for tomcat 
+       ansible.builtin.user :
+         user : "{{USER_NAME}}"
+     - name : installing jdk
+       yum :
+         name : java
+         state : latest
+     - name : creating dir for tomcat
+       ansible.builtin.file :
+          path : "{{TOMCAT_PATH}}"
+          owner : "{{USER_NAME}}"
+          group : "{{USER_NAME}}"
+          state : directory
+     - name : download tomcat
+       ansible.builtin.unarchive :
+         src : https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.70/bin/apache-tomcat-9.0.70.tar.gz
+         dest : "{{TOMCAT_PATH}}"
+         remote_src : yes
+       become_user : "{{USER_NAME}}"
+     - name : remove old artifacts
+       file : 
+         state : "{{item}}"
+         path : "/tomcat/apache-tomcat-9.0.70/webapps"
+         owner : "{{USER_NAME}}"
+         group : "{{USER_NAME}}"
+       with_items :
+         - absent
+         - directory
+     - name : deploying war package
+       ansible.builtin.get_url :
+         url : "{{WARURL}}"
+         dest : "{{PACK}}"
+     - name : check tomcat is running or not
+       shell : ps -ef | tomcat | grep -v grep 
+       register : out
+       ignore_errors : true
+     - name : starting tomcat
+       shell : "nohup sh /tomcat/apache-tomcat-9.0.70/bin/startup.sh"
+    
+         
+         
